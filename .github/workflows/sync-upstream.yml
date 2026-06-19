@@ -1,0 +1,33 @@
+name: 自動同步上游 (mathruffian-dot/claude-code-lazy-packs)
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 每天凌晨 2 點（UTC）= 台灣早上 10 點
+  workflow_dispatch:       # 支援手動觸發
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: 設定 git 使用者
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 加入上游 remote
+        run: |
+          git remote add upstream https://github.com/mathruffian-dot/claude-code-lazy-packs.git || true
+          git fetch upstream
+
+      - name: 同步上游到 main/master
+        run: |
+          BRANCH=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
+          git checkout $BRANCH
+          git merge upstream/$BRANCH --no-edit --allow-unrelated-histories || echo "已是最新版本，無需更新"
+          git push origin $BRANCH || echo "無新變更需要推送"
